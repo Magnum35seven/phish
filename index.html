@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Phish or Legit</title>
+<link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg">
+<meta name="theme-color" content="#16324a">
+<style>
+:root{--bg:#e8edf2;--card:#fff;--ink:#14202b;--mute:#5a6b7a;--line:#cdd6de;--navy:#16324a;--bad:#b3261e;--ok:#1d7a4b;--badbg:#fbe9e7;--okbg:#e4f3ea}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1820;--card:#18242f;--ink:#e6edf3;--mute:#9aabb9;--line:#2b3b49;--navy:#5aa3d6;--bad:#ff8a80;--ok:#6fd49b;--badbg:#3a1f1d;--okbg:#17352a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.top{background:var(--navy);color:#fff;padding:14px 18px;font-weight:600;letter-spacing:.2px}
+@media(prefers-color-scheme:dark){.top{color:#0f1820}}
+main{max-width:640px;margin:0 auto;padding:18px}
+h1{font-size:1.5rem;margin:.2em 0}
+label{display:block;font-weight:600;margin-top:14px}
+input{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink);font:inherit;margin-top:4px}
+button{font:inherit;font-weight:600;padding:12px 18px;border:0;border-radius:6px;background:var(--navy);color:#fff;cursor:pointer}
+@media(prefers-color-scheme:dark){button{color:#0f1820}}
+button:focus-visible,input:focus-visible{outline:3px solid #f2b705;outline-offset:2px}
+.link{background:none;color:var(--navy);padding:8px 0;text-decoration:underline}
+.mail{background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.mail header{padding:14px 16px;border-bottom:1px solid var(--line);word-break:break-all}
+.mail header span{display:block;margin-top:6px;font-weight:700}
+.body{padding:16px;word-break:break-word}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.acts .bad{background:var(--bad)}.acts .ok{background:var(--ok)}
+.acts button{color:#fff}
+.fb{margin-top:16px;padding:14px 16px;border-radius:8px;border-left:6px solid}
+.fb.y{background:var(--okbg);border-color:var(--ok)}.fb.n{background:var(--badbg);border-color:var(--bad)}
+.count,.mute{color:var(--mute);margin:0 0 8px}
+.score{font-size:3rem;font-weight:700;margin:.1em 0}
+.miss{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin-top:12px}
+</style></head><body>
+<div class="top">Phish or Legit</div>
+<main id="app"></main>
+<script src="scenarios.js"></script>
+<script src="dataset.js"></script>
+<script>
+const $=s=>document.querySelector(s),K='pt_company';
+let C=null;try{C=JSON.parse(localStorage.getItem(K))}catch(e){}
+let Q=[],i=0,res=[];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+function look(d){const p=d.split('.'),n=p[0],t=p.slice(1).join('.'),o=[];
+ if(n.includes('m'))o.push(n.replace('m','rn')+'.'+t);
+ if(n.includes('o'))o.push(n.replace('o','0')+'.'+t);
+ if(n.length>3){const k=1+Math.floor(Math.random()*(n.length-2));o.push(n.slice(0,k)+n[k+1]+n[k]+n.slice(k+2)+'.'+t)}
+ o.push(n+'-secure.'+t,n+'-login.net',n+'.co');
+ return rnd(o.filter(x=>x!==d))}
+function fill(s){if(s.g)return s;const f=look(C.domain),m={company:C.company,domain:C.domain,email:rnd(C.emails),site:C.site,fake:f,fakeurl:'https://'+f+'/signin'};
+ const r=x=>x.replace(/\{(\w+)\}/g,(_,k)=>m[k]);
+ return{...s,from:r(s.from),addr:r(s.addr),subj:r(s.subj),body:r(s.body),flags:s.flags.map(r)}}
+function setup(){const e=C?C.emails:[];
+ $('#app').innerHTML=`<h1>Company setup</h1><p class=mute>Training messages are built around these details.</p>
+ <label>Company name<input id=co value="${esc(C?C.company:'')}" autocomplete=off></label>
+ <label>Website<input id=si placeholder="www.example.com" value="${esc(C?C.site.replace('https://',''):'')}"></label>
+ <label>Legitimate email address 1<input id=e0 placeholder="name@example.com" value="${esc(e[0]||'')}"></label>
+ <label>Email address 2 (optional)<input id=e1 value="${esc(e[1]||'')}"></label>
+ <label>Email address 3 (optional)<input id=e2 value="${esc(e[2]||'')}"></label>
+ <p id=err style="color:var(--bad)"></p><button onclick="save()">Save company</button>`}
+function save(){const co=$('#co').value.trim(),si=$('#si').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,''),
+ em=[0,1,2].map(n=>$('#e'+n).value.trim().toLowerCase()).filter(Boolean);
+ if(!co||!si||!em.length||!em.every(x=>/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x)))return $('#err').textContent='Enter a company name, a website and at least one valid email address.';
+ C={company:co,site:'https://'+si,domain:em[0].split('@')[1],emails:em};
+ try{localStorage.setItem(K,JSON.stringify(C))}catch(e){}
+ home()}
+function home(){if(!C)return setup();
+ $('#app').innerHTML=`<h1>${esc(C.company)} security training</h1><p>Ten messages. For each one, decide if it is phishing or legitimate.</p>
+ <button onclick="start()">Start training</button><br><button class=link onclick="setup()">Edit company details</button>`}
+const pick=(a,n)=>[...a].sort(()=>Math.random()-.5).slice(0,n);
+function start(){const by=(l,t)=>l.filter(x=>x.t===t);
+ Q=[...pick(by(SCENARIOS,'phish'),3),...pick(by(DATASET,'phish'),2),...pick(by(SCENARIOS,'legit'),3),...pick(by(DATASET,'legit'),2)].sort(()=>Math.random()-.5).map(fill);i=0;res=[];show()}
+function show(){const s=Q[i];
+ $('#app').innerHTML=`<p class=count>Message ${i+1} of ${Q.length}</p>
+ <article class=mail><header><b>${esc(s.from)}</b> &lt;${esc(s.addr)}&gt;<span>${esc(s.subj)}</span></header>
+ <div class=body>${esc(s.body).replace(/\n/g,'<br>')}</div></article>
+ <div class=acts id=acts><button class=bad onclick="ans('phish')">Phishing</button><button class=ok onclick="ans('legit')">Legitimate</button></div><div id=fb></div>`}
+function ans(a){const s=Q[i],ok=a===s.t;res.push({s,ok});$('#acts').remove();
+ $('#fb').innerHTML=`<div class="fb ${ok?'y':'n'}" role=status><b>${ok?'Correct':'Incorrect'}. This was ${s.t==='phish'?'a phishing message':'a legitimate message'}.</b>
+ <ul>${s.flags.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>
+ <button onclick="next()">${i+1<Q.length?'Next message':'See results'}</button></div>`}
+function next(){++i<Q.length?show():summary()}
+function summary(){const n=res.filter(r=>r.ok).length,miss=res.filter(r=>!r.ok);
+ $('#app').innerHTML=`<p class=mute>Your result</p><div class=score>${n} / ${res.length}</div>
+ <p>${miss.length?'Review what you missed:':'No mistakes. Well done.'}</p>
+ ${miss.map(r=>`<div class=miss><b>${esc(r.s.subj)}</b><br><span class=mute>From ${esc(r.s.addr)}. Actually ${r.s.t==='phish'?'phishing':'legitimate'}.</span><ul>${r.s.flags.map(f=>`<li>${esc(f)}</li>`).join('')}</ul></div>`).join('')}
+ <p><button onclick="start()">Train again</button></p><p class=mute style=font-size:.85rem>Some messages are adapted from the Nazario and Enron corpora via the Phishing-Email-Dataset repository (CC BY-SA 4.0).</p>`}
+home();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
